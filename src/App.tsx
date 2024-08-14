@@ -13,10 +13,9 @@ function App() {
     { index: number; name: string }[]
   >([]);
   const [correctCards, setCorrectCards] = useState<{ index: number }[]>([]);
-  const [people, setPeople] = useState<Person[]>([
-    ...FAQTA_EMPLOYEES,
-    ...FAQTA_EMPLOYEES,
-  ]);
+  const [people, setPeople] = useState<Person[]>(
+    shuffle([...FAQTA_EMPLOYEES, ...FAQTA_EMPLOYEES])
+  );
   const [guesses, setGuesses] = useState(0);
 
   useEffect(() => {
