@@ -1,0 +1,93 @@
+.card-container {
+  perspective: 1000px; /* Define the 3D space */
+
+  &.correct {
+    opacity: 0.5;
+    transition: opacity 0.3s;
+  }
+}
+
+.card {
+  height: 120px;
+  border-radius: 6px;
+  box-shadow: 2px 4px 10px rgba(0, 0, 0, 0.4);
+  background-color: rgba(63, 69, 188, 1);
+  color: #6672dd;
+  position: relative;
+  transform-style: preserve-3d; /* Allow 3D transformations */
+  transition: transform 0.8s; /* Smooth transition */
+
+  &.flipped {
+    transform: rotateX(180deg); /* Flip the card on hover */
+  }
+
+  &.clickable {
+    cursor: pointer;
+  }
+}
+
+.card .front,
+.card .back {
+  padding: 0.5rem;
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  gap: 0.5rem;
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden; /* Hide the back face when not visible */
+}
+
+.card .front {
+  transform: rotateX(180deg); /* Rotate the back face */
+  border-radius: 6px;
+  color: white;
+
+  .cover {
+    width: 100%;
+    max-height: 80px;
+    aspect-ratio: 1;
+    overflow: hidden;
+
+    .image {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      border-radius: 3px;
+      transition: all 0.2s ease-in-out;
+      user-select: none;
+    }
+  }
+
+  .name {
+    font-size: 12px;
+    margin: 0;
+    overflow-wrap: break-word;
+    text-align: center;
+  }
+}
+
+.card .back {
+  &:hover {
+    color: white;
+  }
+
+  .unknown {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 3px;
+    transition: all 0.3s ease-in-out;
+    display: grid;
+    place-content: center;
+    font-size: 3.5rem;
+    font-weight: 700;
+    user-select: none;
+  }
+
+  .name {
+    font-size: 12px;
+    margin: 0;
+    overflow-wrap: break-word;
+  }
+}
