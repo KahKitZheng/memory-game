@@ -226,6 +226,10 @@ function App() {
                 return;
               }
 
+              if (chosenCards.find((card) => card.index === index)) {
+                return;
+              }
+
               if (chosenCards.length === 2) {
                 return;
               }
