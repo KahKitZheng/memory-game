@@ -4,6 +4,7 @@ import { shuffle } from "./utils/shuffle";
 import { FAQTA_EMPLOYEES } from "./mock-data/faqta-employees";
 import { FaRankingStar } from "react-icons/fa6";
 import { IoIosClose } from "react-icons/io";
+import { Analytics } from "@vercel/analytics/react";
 import Card from "./components/Card/Card";
 import "./App.scss";
 
@@ -173,6 +174,7 @@ function App() {
 
   return (
     <div>
+      <Analytics />
       <header className="header">
         <div>
           <h1 className="title">Memory game</h1>
