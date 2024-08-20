@@ -1,3 +1,10 @@
+type Answer = {
+  index: number;
+  name: string;
+};
+
+type GameState = "idle" | "start" | "waiting" | "end";
+
 type Person = {
   name: string;
   firstName: string;

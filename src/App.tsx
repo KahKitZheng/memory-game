@@ -13,120 +13,44 @@ const supabase = createClient(
   import.meta.env.VITE_ANON_KEY
 );
 
+const IDLE_GAME = "idle";
+const START_GAME = "start";
+const WAITING_GAME = "waiting";
+const END_GAME = "end";
+
+const ALLOWED_GUESSES = 2;
+const FLIP_IDLE_CARDS = 16;
+const FLIP_INTERVAL_SECONDS = 3;
+const FLIP_CARD_ANIMATION = 800;
+
 function App() {
-  const [revealCardIndex, setRevealCardIndex] = useState([-1]);
-  const [gameState, setGameState] = useState("idle");
-  const [isAllCardsFlipped, setIsAllCardsFlipped] = useState(false);
+  const [gameState, setGameState] = useState<GameState>(IDLE_GAME);
   const [time, setTime] = useState(0);
-  const [chosenCards, setChosenCards] = useState<
-    { index: number; name: string }[]
-  >([]);
-  const [correctCards, setCorrectCards] = useState<{ index: number }[]>([]);
+  const [guesses, setGuesses] = useState(0);
+
+  const [revealCardIndex, setRevealCardIndex] = useState([-1]);
+  const [isAllCardsFlipped, setIsAllCardsFlipped] = useState(false);
+
+  const [chosenCards, setChosenCards] = useState<Answer[]>([]);
+  const [correctCards, setCorrectCards] = useState<Answer[]>([]);
   const [people, setPeople] = useState<Person[]>(
     shuffle([...FAQTA_EMPLOYEES, ...FAQTA_EMPLOYEES])
   );
-  const [guesses, setGuesses] = useState(0);
-  const [leaderboard, setLeaderboard] = useState<LeaderBoardUser[]>([]);
-  const [leaderboardVisible, setLeaderboardVisible] = useState(false);
+
+  const [leaderBoardData, setLeaderBoardData] = useState<LeaderBoardUser[]>([]);
+  const [leaderBoardVisible, setLeaderBoardVisible] = useState(false);
   const [username, setUsername] = useState("");
   const [isSubmitted, setIsSubmitted] = useState(false);
 
-  const FLIP_IDLE_CARDS = 16;
-
-  useEffect(() => {
-    if (time > 3) {
-      setIsAllCardsFlipped(false);
-    }
-
-    const interval = setTimeout(() => {
-      if (gameState === "start") {
-        return setTime((prevTime) => prevTime + 1);
-      }
-      if (gameState === "end") {
-        return () => clearInterval(interval);
-      }
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, [gameState, time]);
-
-  useEffect(() => {
-    if (gameState !== "idle") {
-      return setRevealCardIndex([]);
-    }
-
-    const interval = setInterval(() => {
-      const randomIndices = Array.from({ length: FLIP_IDLE_CARDS }, () =>
-        Math.floor(Math.random() * people.length)
-      );
-      setRevealCardIndex(randomIndices);
-    }, 3000);
-
-    return () => clearInterval(interval);
-  }, [gameState, people.length]);
-
-  useEffect(() => {
-    if (gameState === "end") {
-      return;
-    }
-
-    if (chosenCards.length === 2) {
-      setGameState("waiting");
-      setGuesses((prevGuesses) => prevGuesses + 1);
-
-      const [firstCard, secondCard] = chosenCards;
-
-      if (firstCard.name === secondCard.name) {
-        const newList = [...correctCards, firstCard, secondCard];
-
-        setCorrectCards(newList);
-        setChosenCards([]);
-
-        if (newList.length === people.length) {
-          setGameState("end");
-          setLeaderboardVisible(true);
-        } else {
-          setGameState("start");
-        }
-      }
-
-      const nextTurn = setTimeout(() => {
-        setChosenCards([]);
-        setGameState("start");
-      }, 800);
-
-      // need to remove nextTurn timeout, otherwise game will keep running
-      return () => clearTimeout(nextTurn);
-    }
-  }, [chosenCards, gameState]);
-
-  function renderTimeInMinutesAndSeconds() {
+  function calcToMinutesAndSeconds(time: number) {
     const minutes = Math.floor(time / 60);
     const seconds = time % 60;
 
     return `${minutes}:${seconds < 10 ? `0${seconds}` : seconds}`;
   }
 
-  function startGame() {
-    setGameState("start");
-    setIsAllCardsFlipped(true);
-  }
-
-  function resetGame() {
-    setGameState("idle");
-    setTime(0);
-    setGuesses(0);
-    setChosenCards([]);
-    setCorrectCards([]);
-    setIsAllCardsFlipped(false);
-    setPeople(shuffle([...FAQTA_EMPLOYEES, ...FAQTA_EMPLOYEES]));
-    setIsSubmitted(false);
-    setLeaderboardVisible(false);
-    setUsername("");
-  }
-
   function isCardFlipped(cardIndex: number) {
-    // game state is idle
+    // show random cards during idle state
     if (revealCardIndex.includes(cardIndex)) {
       return true;
     }
@@ -138,23 +62,34 @@ function App() {
     if (chosenCards.find((card) => card.index === cardIndex)) {
       return true;
     }
+    // card is correct
     if (correctCards.find((card) => card.index === cardIndex)) {
       return true;
     }
-
     return false;
   }
 
-  function calcToMinutesAndSeconds(time: number) {
-    const minutes = Math.floor(time / 60);
-    const seconds = time % 60;
-
-    return `${minutes}:${seconds < 10 ? `0${seconds}` : seconds}`;
+  function startGame() {
+    setGameState(START_GAME);
+    setIsAllCardsFlipped(true);
   }
 
-  async function getLeaderBoard() {
+  function resetGame() {
+    setGameState(IDLE_GAME);
+    setTime(0);
+    setGuesses(0);
+    setChosenCards([]);
+    setCorrectCards([]);
+    setIsAllCardsFlipped(false);
+    setPeople(shuffle([...FAQTA_EMPLOYEES, ...FAQTA_EMPLOYEES]));
+    setIsSubmitted(false);
+    setLeaderBoardVisible(false);
+    setUsername("");
+  }
+
+  async function getLeaderBoardData() {
     const { data } = await supabase.from("leaderboard").select("*");
-    setLeaderboard(data as LeaderBoardUser[]);
+    setLeaderBoardData(data as LeaderBoardUser[]);
   }
 
   async function submitScore() {
@@ -162,13 +97,83 @@ function App() {
       .from("leaderboard")
       .insert([{ name: username, time: time, guesses: guesses }]);
 
-    getLeaderBoard();
+    getLeaderBoardData();
     setIsSubmitted(true);
   }
 
+  // Flip random cards during idle state
   useEffect(() => {
-    if (gameState === "idle" || gameState === "end") {
-      getLeaderBoard();
+    if (gameState !== IDLE_GAME) {
+      return setRevealCardIndex([]);
+    }
+
+    const interval = setInterval(() => {
+      const randomIndices = Array.from({ length: FLIP_IDLE_CARDS }, () =>
+        Math.floor(Math.random() * people.length)
+      );
+      setRevealCardIndex(randomIndices);
+    }, FLIP_INTERVAL_SECONDS * 1000);
+
+    return () => clearInterval(interval);
+  }, [gameState, people.length]);
+
+  // Preview all card positions and handle start-end game
+  useEffect(() => {
+    if (time > FLIP_INTERVAL_SECONDS) {
+      setIsAllCardsFlipped(false);
+    }
+
+    const interval = setTimeout(() => {
+      if (gameState === START_GAME) {
+        return setTime(time + 1);
+      }
+      if (gameState === END_GAME) {
+        return () => clearInterval(interval);
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [gameState, time]);
+
+  // Check if chosen cards are correct and handle game state
+  useEffect(() => {
+    if (gameState === END_GAME) {
+      return;
+    }
+
+    if (chosenCards.length === ALLOWED_GUESSES) {
+      setGameState(WAITING_GAME);
+      setGuesses(guesses + 1);
+
+      const [firstCard, secondCard] = chosenCards;
+
+      if (firstCard.name === secondCard.name) {
+        const newList = [...correctCards, firstCard, secondCard];
+
+        setCorrectCards(newList);
+        setChosenCards([]);
+
+        if (newList.length === people.length) {
+          setGameState(END_GAME);
+          setLeaderBoardVisible(true);
+        } else {
+          setGameState(START_GAME);
+        }
+      }
+
+      const nextTurn = setTimeout(() => {
+        setChosenCards([]);
+        setGameState(START_GAME);
+      }, FLIP_CARD_ANIMATION);
+
+      // need to remove nextTurn timeout, otherwise game will keep running
+      return () => clearTimeout(nextTurn);
+    }
+  }, [chosenCards, correctCards, gameState, guesses, people.length]);
+
+  useEffect(() => {
+    if (gameState === IDLE_GAME || gameState === END_GAME) {
+      getLeaderBoardData();
     }
   }, [gameState]);
 
@@ -181,15 +186,15 @@ function App() {
         </div>
         <div className="game-settings">
           <div className="group game">
-            <p>Time: {renderTimeInMinutesAndSeconds()}</p>
+            <p>Time: {calcToMinutesAndSeconds(time)}</p>
             <p>Guesses: {guesses}</p>
           </div>
           <div className="group">
             <button
               className="button icon secondary"
               onClick={() => {
-                setLeaderboardVisible(!leaderboardVisible);
-                getLeaderBoard();
+                setLeaderBoardVisible(!leaderBoardVisible);
+                getLeaderBoardData();
               }}
             >
               <FaRankingStar />
@@ -220,9 +225,9 @@ function App() {
             isCorrect={
               correctCards.find((card) => card.index === index) ? true : false
             }
-            clickable={gameState === "start"}
+            clickable={gameState === START_GAME}
             onClick={() => {
-              if (gameState !== "start") {
+              if (gameState !== START_GAME) {
                 return;
               }
 
@@ -230,7 +235,7 @@ function App() {
                 return;
               }
 
-              if (chosenCards.length === 2) {
+              if (chosenCards.length === ALLOWED_GUESSES) {
                 return;
               }
 
@@ -243,25 +248,25 @@ function App() {
         ))}
       </div>
 
-      {leaderboardVisible && (
+      {leaderBoardVisible && (
         <div>
           <button
             className="shade"
-            onClick={() => setLeaderboardVisible(false)}
+            onClick={() => setLeaderBoardVisible(false)}
           />
           <div className="leaderboard">
             <header className="leaderboard-header">
               <p className="leaderboard-title">Leaderboard</p>
               <button
-                onClick={() => setLeaderboardVisible(false)}
+                onClick={() => setLeaderBoardVisible(false)}
                 className="leaderboard-close"
               >
                 <IoIosClose />
               </button>
             </header>
             <ol className="leaderboard-list">
-              {leaderboard.length ? (
-                leaderboard
+              {leaderBoardData.length ? (
+                leaderBoardData
                   .sort((a, b) => a.time - b.time)
                   .map((user, index) => (
                     <li key={index + 1} className="row">
