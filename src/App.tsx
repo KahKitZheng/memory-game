@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
 import { shuffle } from "./utils/shuffle";
-import { FAQTA_EMPLOYEES } from "./mock-data/faqta-employees";
 import { FaRankingStar } from "react-icons/fa6";
+import { FaCrown } from "react-icons/fa6";
 import { IoIosClose } from "react-icons/io";
 import { Analytics } from "@vercel/analytics/react";
 import Card from "./components/Card/Card";
+import { EMPLOYEES_DATA } from "./data/employees.ts";
 import "./App.scss";
 
 const supabase = createClient(
@@ -15,7 +16,6 @@ const supabase = createClient(
 
 const IDLE_GAME = "idle";
 const START_GAME = "start";
-const WAITING_GAME = "waiting";
 const END_GAME = "end";
 
 const ALLOWED_GUESSES = 2;
@@ -34,7 +34,7 @@ function App() {
   const [chosenCards, setChosenCards] = useState<Answer[]>([]);
   const [correctCards, setCorrectCards] = useState<Answer[]>([]);
   const [people, setPeople] = useState<Person[]>(
-    shuffle([...FAQTA_EMPLOYEES, ...FAQTA_EMPLOYEES])
+    shuffle([...EMPLOYEES_DATA, ...EMPLOYEES_DATA])
   );
 
   const [leaderBoardData, setLeaderBoardData] = useState<LeaderBoardUser[]>([]);
@@ -81,7 +81,7 @@ function App() {
     setChosenCards([]);
     setCorrectCards([]);
     setIsAllCardsFlipped(false);
-    setPeople(shuffle([...FAQTA_EMPLOYEES, ...FAQTA_EMPLOYEES]));
+    setPeople(shuffle([...EMPLOYEES_DATA, ...EMPLOYEES_DATA]));
     setIsSubmitted(false);
     setLeaderBoardVisible(false);
     setUsername("");
@@ -93,9 +93,14 @@ function App() {
   }
 
   async function submitScore() {
-    await supabase
-      .from("leaderboard")
-      .insert([{ name: username, time: time, guesses: guesses }]);
+    await supabase.from("leaderboard").insert([
+      {
+        name: username,
+        time: time,
+        guesses: guesses,
+        answers: EMPLOYEES_DATA.length,
+      },
+    ]);
 
     getLeaderBoardData();
     setIsSubmitted(true);
@@ -142,7 +147,6 @@ function App() {
     }
 
     if (chosenCards.length === ALLOWED_GUESSES) {
-      setGameState(WAITING_GAME);
       setGuesses(guesses + 1);
 
       const [firstCard, secondCard] = chosenCards;
@@ -169,7 +173,7 @@ function App() {
       // need to remove nextTurn timeout, otherwise game will keep running
       return () => clearTimeout(nextTurn);
     }
-  }, [chosenCards, correctCards, gameState, guesses, people.length]);
+  }, [chosenCards, gameState]);
 
   useEffect(() => {
     if (gameState === IDLE_GAME || gameState === END_GAME) {
@@ -252,11 +256,19 @@ function App() {
         <div>
           <button
             className="shade"
-            onClick={() => setLeaderBoardVisible(false)}
+            onClick={() => {
+              if (gameState === END_GAME) {
+                return;
+              }
+
+              setLeaderBoardVisible(false);
+            }}
           />
           <div className="leaderboard">
             <header className="leaderboard-header">
-              <p className="leaderboard-title">Leaderboard</p>
+              <p className="leaderboard-title">
+                Leaderboard <FaCrown />
+              </p>
               <button
                 onClick={() => setLeaderBoardVisible(false)}
                 className="leaderboard-close"
@@ -270,13 +282,18 @@ function App() {
                   .sort((a, b) => a.time - b.time)
                   .map((user, index) => (
                     <li key={index + 1} className="row">
-                      <p>
-                        {index + 1}. {user.name}
+                      <p className="text-right">{index + 1}.</p>
+                      <p>{user.name}</p>
+                      <p className="text-right">
+                        {calcToMinutesAndSeconds(user.time)}
+                        <span>s</span>
                       </p>
                       <p className="text-right">
-                        {calcToMinutesAndSeconds(user.time)}s
+                        {user.guesses} <span>guesses</span>
                       </p>
-                      <p className="text-right">{user.guesses} guesses</p>
+                      <p className="text-right">
+                        {user.answers} <span>combinations</span>
+                      </p>
                     </li>
                   ))
               ) : (
@@ -287,26 +304,31 @@ function App() {
             </ol>
 
             {gameState === "end" && !isSubmitted && (
-              <div className="leaderboard-form">
-                <div className="player-results">
-                  <div className="row">
-                    <input
-                      type="text"
-                      placeholder="Enter your name"
-                      className="leaderboard-input"
-                      value={username}
-                      onChange={(e) => setUsername(e.target.value)}
-                    />
-                    <p className="text-right">
-                      {calcToMinutesAndSeconds(time)}s
-                    </p>
-                    <p className="text-right">{guesses} guesses</p>
+              <>
+                <div className="leaderboard-form">
+                  <div className="player-results">
+                    <div className="row">
+                      <input
+                        type="text"
+                        placeholder="Enter your name"
+                        className="leaderboard-input"
+                        value={username}
+                        onChange={(e) => setUsername(e.target.value)}
+                      />
+                      <p className="text-right">
+                        {calcToMinutesAndSeconds(time)}s
+                      </p>
+                      <p className="text-right">{guesses} guesses</p>
+                      <p className="text-right">
+                        {EMPLOYEES_DATA.length} combinations
+                      </p>
+                    </div>
                   </div>
                 </div>
-                <button className="button primary" onClick={submitScore}>
+                <button className="button primary submit" onClick={submitScore}>
                   Submit
                 </button>
-              </div>
+              </>
             )}
           </div>
         </div>

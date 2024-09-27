@@ -23,7 +23,7 @@ export default function Card(props: Readonly<CardProps>) {
         </div>
         <div className="front">
           <div className="cover">
-            <img className="image" src={person.img} alt={person.name} />
+            <img className="image" src={person.image} alt={person.name} />
           </div>
           <p className="name">{person.firstName}</p>
         </div>

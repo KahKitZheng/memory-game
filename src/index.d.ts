@@ -9,8 +9,7 @@ type Person = {
   name: string;
   firstName: string;
   jobTitle: string;
-  team: string[];
-  img: string;
+  image: string;
 };
 
 type LeaderBoardUser = {
@@ -19,4 +18,5 @@ type LeaderBoardUser = {
   name: string;
   guesses: number;
   time: number;
+  answers: number;
 };
