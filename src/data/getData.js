@@ -58,9 +58,8 @@ const getEmployees = async () => {
       const firstName = name.includes("Kah Kit")
         ? "Kah Kit"
         : name.split(" ")[0];
-      const jobTitle = quote.querySelector(".team-card__desc")?.innerText;
 
-      return { image, name, firstName, jobTitle };
+      return { image, name, firstName };
     });
   });
 

@@ -8,7 +8,6 @@ type GameState = "idle" | "start" | "waiting" | "end";
 type Person = {
   name: string;
   firstName: string;
-  jobTitle: string;
   image: string;
 };
 
